@@ -1,8 +1,4 @@
 using System;
-using System.Linq;
-using System.IO;
-using System.Text;
-using System.Collections;
 using System.Collections.Generic;
 
 /**
@@ -11,24 +7,68 @@ using System.Collections.Generic;
  **/
 class Player
 {
+    public const int TYPE_MONSTER = 0;
+    public const int TYPE_MY_HERO = 1;
+    public const int TYPE_OP_HERO = 2;
+
+    public class Entity
+    {
+        public int Id;
+        public int Type;
+        public int X, Y;
+        public int ShieldLife;
+        public int IsControlled;
+        public int Health;
+        public int Vx, Vy;
+        public int NearBase;
+        public int ThreatFor;
+
+        public Entity(int id, int type, int x, int y, int shieldLife, int isControlled, int health, int vx, int vy, int nearBase, int threatFor)
+        {
+            this.Id = id;
+            this.Type = type;
+            this.X = x;
+            this.Y = y;
+            this.ShieldLife = shieldLife;
+            this.IsControlled = isControlled;
+            this.Health = health;
+            this.Vx = vx;
+            this.Vy = vy;
+            this.NearBase = nearBase;
+            this.ThreatFor = threatFor;
+        }
+    }
+
     static void Main(string[] args)
     {
         string[] inputs;
         inputs = Console.ReadLine().Split(' ');
-        int baseX = int.Parse(inputs[0]); // The corner of the map representing your base
+
+        // base_x,base_y: The corner of the map representing your base
+        int baseX = int.Parse(inputs[0]);
         int baseY = int.Parse(inputs[1]);
-        int heroesPerPlayer = int.Parse(Console.ReadLine()); // Always 3
+
+        // heroesPerPlayer: Always 3
+        int heroesPerPlayer = int.Parse(Console.ReadLine());
 
         // game loop
         while (true)
         {
-            for (int i = 0; i < 2; i++)
-            {
-                inputs = Console.ReadLine().Split(' ');
-                int health = int.Parse(inputs[0]); // Each player's base health
-                int mana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
-            }
+
+            inputs = Console.ReadLine().Split(' ');
+            int myHealth = int.Parse(inputs[0]); // Your base health
+            int myMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
+
+            inputs = Console.ReadLine().Split(' ');
+            int oppHealth = int.Parse(inputs[0]);
+            int oppMana = int.Parse(inputs[1]);
+
             int entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
+
+            List<Entity> myHeroes = new List<Entity>(entityCount);
+            List<Entity> oppHeroes = new List<Entity>(entityCount);
+            List<Entity> monsters = new List<Entity>(entityCount);
+
             for (int i = 0; i < entityCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
@@ -43,17 +83,45 @@ class Player
                 int vy = int.Parse(inputs[8]);
                 int nearBase = int.Parse(inputs[9]); // 0=monster with no target yet, 1=monster targeting a base
                 int threatFor = int.Parse(inputs[10]); // Given this monster's trajectory, is it a threat to 1=your base, 2=your opponent's base, 0=neither
+
+                Entity entity = new Entity(
+                    id, type, x, y, shieldLife, isControlled, health, vx, vy, nearBase, threatFor
+                );
+
+                switch (type)
+                {
+                    case TYPE_MONSTER:
+                        monsters.Add(entity);
+                        break;
+                    case TYPE_MY_HERO:
+                        myHeroes.Add(entity);
+                        break;
+                    case TYPE_OP_HERO:
+                        oppHeroes.Add(entity);
+                        break;
+                }
             }
             for (int i = 0; i < heroesPerPlayer; i++)
             {
+                Entity target = null;
 
-                // Write an action using Console.WriteLine()
-                // To debug: Console.Error.WriteLine("Debug messages...");
+                if (monsters.Count > 0)
+                {
+                    target = monsters[i % monsters.Count];
+                }
 
-
-                // In the first league: MOVE <x> <y> | WAIT; In later leagues: | SPELL <spellParams>;
-                Console.WriteLine("WAIT");
+                if (target != null)
+                {
+                    Console.WriteLine($"MOVE {target.X} {target.Y}");
+                }
+                else
+                {
+                    Console.WriteLine("WAIT");
+                }
             }
+
+            // Write an action using Console.WriteLine()
+            // To debug: Console.Error.WriteLine("Debug messages...");
         }
     }
 }
