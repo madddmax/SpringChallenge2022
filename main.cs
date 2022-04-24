@@ -5,10 +5,10 @@ class Player
 {
     public const int MapWidth = 17630;
     public const int MapHeight = 9000;
+    public const int BaseAutoTarget = 5000;
 
-    public const int MinDistanceToCast = 4000;
-    public const int MinManaToCast = 10;
-    public const int MinHealthToCast = 8;
+    public const int ManaToCast = 10;
+    public const int ControlCastRange = 2200;
 
     public const int TYPE_MONSTER = 0;
     public const int TYPE_MY_HERO = 1;
@@ -34,7 +34,8 @@ class Player
         public int ShieldLife;
         public int IsControlled;
         public int Health;
-        public int Vx, Vy;
+        public Point Trajectory;
+        public Point NextLocation;
         public int NearBase;
         public int ThreatFor;
 
@@ -46,8 +47,8 @@ class Player
             this.ShieldLife = shieldLife;
             this.IsControlled = isControlled;
             this.Health = health;
-            this.Vx = vx;
-            this.Vy = vy;
+            this.Trajectory = new Point(vx, vy);
+            this.NextLocation = new Point(x + vx, y + vy);
             this.NearBase = nearBase;
             this.ThreatFor = threatFor;
         }
@@ -125,10 +126,10 @@ class Player
                 }
             }
 
-            for (int hero = 1; hero <= heroesPerPlayer; hero++)
+            foreach (Entity hero in myHeroes)
             {
                 Entity targetMonster = null;
-                int minDistance = Int32.MaxValue;
+                int minDistanceToBase = Int32.MaxValue;
                 for (int i = 0; i < monsters.Count; i++)
                 {
                     var monster = monsters[i];
@@ -137,35 +138,40 @@ class Player
                         continue;
                     }
 
-                    int current = Distance(myBase, monster.Location);
-                    if (current < minDistance)
+                    int current = Distance(myBase, monster.NextLocation);
+                    if (current < minDistanceToBase)
                     {
                         targetMonster = monster;
-                        minDistance = current;
+                        minDistanceToBase = current;
                     }
                 }
 
                 if (targetMonster == null)
                 {
-                    Move(myBase, hero);
+                    Move(myBase, hero.Id);
                     continue;
                 }
 
-                if (minDistance <= MinDistanceToCast &&
-                myMana >= MinManaToCast &&
-                targetMonster.Health >= MinHealthToCast)
+                var distanceToTarget = Distance(hero.Location, targetMonster.Location);
+                if (distanceToTarget <= ControlCastRange &&
+                   minDistanceToBase <= BaseAutoTarget / 2 &&
+                   myMana >= ManaToCast &&
+                   targetMonster.Health >= 8)
                 {
-                    Control(targetMonster.Id, enemyBase, hero);
+                    Control(targetMonster.Id, enemyBase, hero.Id);
                     monsters.Remove(targetMonster);
+                    myMana -= ManaToCast;
                     continue;
                 }
 
-                Move(targetMonster.Location, hero);
+                Move(targetMonster.NextLocation, hero.Id);
             }
         }
     }
 
-    public static int Distance(Point p1, Point p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+    public static int Distance(Point p1, Point p2) => (int)Math.Sqrt(Math.Pow(p1.X - p2.X, 2) + Math.Pow(p1.Y - p2.Y, 2));
+
+    public static int DistanceFast(Point p1, Point p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
 
     public static void Debug(Point p) => Console.Error.WriteLine($"Debug point {p.X} {p.Y}");
 
