@@ -3,6 +3,13 @@ using System.Collections.Generic;
 
 class Player
 {
+    public const int MapWidth = 17630;
+    public const int MapHeight = 9000;
+
+    public const int MinDistanceToCast = 4000;
+    public const int MinManaToCast = 10;
+    public const int MinHealthToCast = 8;
+
     public const int TYPE_MONSTER = 0;
     public const int TYPE_MY_HERO = 1;
     public const int TYPE_OP_HERO = 2;
@@ -58,13 +65,19 @@ class Player
         };
         Debug(myBase);
 
+        Point enemyBase = new Point
+        {
+            X = Math.Abs(myBase.X - MapWidth),
+            Y = Math.Abs(myBase.Y - MapHeight)
+        };
+        Debug(enemyBase);
+
         // heroesPerPlayer: Always 3
         int heroesPerPlayer = int.Parse(Console.ReadLine());
 
         // game loop
         while (true)
         {
-
             inputs = Console.ReadLine().Split(' ');
             int myHealth = int.Parse(inputs[0]); // Your base health
             int myMana = int.Parse(inputs[1]); // Ignore in the first league; Spend ten mana to cast a spell
@@ -112,30 +125,51 @@ class Player
                 }
             }
 
-            Point targetLocation = myBase;
-            int minDistance = Int32.MaxValue;
-            for (int i = 0; i < monsters.Count; i++)
+            for (int hero = 1; hero <= heroesPerPlayer; hero++)
             {
-                var monster = monsters[i];
-                int current = Distance(myBase, monster.Location);
-
-                if (current < minDistance)
+                Entity targetMonster = null;
+                int minDistance = Int32.MaxValue;
+                for (int i = 0; i < monsters.Count; i++)
                 {
-                    targetLocation = monster.Location;
-                    minDistance = current;
-                }
-            }
+                    var monster = monsters[i];
+                    if (monster.NearBase != TYPE_MY_HERO)
+                    {
+                        continue;
+                    }
 
-            for (int i = 0; i < heroesPerPlayer; i++)
-            {
-                Move(targetLocation);
+                    int current = Distance(myBase, monster.Location);
+                    if (current < minDistance)
+                    {
+                        targetMonster = monster;
+                        minDistance = current;
+                    }
+                }
+
+                if (targetMonster == null)
+                {
+                    Move(myBase, hero);
+                    continue;
+                }
+
+                if (minDistance <= MinDistanceToCast &&
+                myMana >= MinManaToCast &&
+                targetMonster.Health >= MinHealthToCast)
+                {
+                    Control(targetMonster.Id, enemyBase, hero);
+                    monsters.Remove(targetMonster);
+                    continue;
+                }
+
+                Move(targetMonster.Location, hero);
             }
         }
     }
 
     public static int Distance(Point p1, Point p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
 
-    public static void Move(Point p) => Console.WriteLine($"MOVE {p.X} {p.Y}");
+    public static void Debug(Point p) => Console.Error.WriteLine($"Debug point {p.X} {p.Y}");
 
-    public static void Debug(Point p) => Console.Error.WriteLine("Debug messages " + p.X + " " + p.Y);
+    public static void Move(Point p, int hero) => Console.WriteLine($"MOVE {p.X} {p.Y} M{hero}");
+
+    public static void Control(int id, Point p, int hero) => Console.WriteLine($"SPELL CONTROL {id} {p.X} {p.Y} C{hero}");
 }
