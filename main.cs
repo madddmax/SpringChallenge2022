@@ -78,8 +78,8 @@ class Player
 
         Point defPosition = new Point
         {
-            X = Math.Abs(myBase.X - BaseVisionRange / 2),
-            Y = Math.Abs(myBase.Y - BaseVisionRange / 2)
+            X = Math.Abs(myBase.X - (BaseVisionRange + 1000) / 2),
+            Y = Math.Abs(myBase.Y - (BaseVisionRange + 1000) / 2)
         };
         Debug(defPosition);
 
@@ -142,6 +142,7 @@ class Player
             {
                 Entity targetMonster = null;
                 int minDistanceToBase = Int32.MaxValue;
+
                 for (int i = 0; i < monsters.Count; i++)
                 {
                     var monster = monsters[i];
@@ -162,7 +163,22 @@ class Player
 
                 if (targetMonster == null)
                 {
-                    Move(defPosition, hero.Id);
+                    Point targetPosition = defPosition;
+                    int minDistance = Int32.MaxValue;
+
+                    for (int i = 0; i < monsters.Count; i++)
+                    {
+                        var monster = monsters[i];
+
+                        int distance = Distance(hero.Location, monster.NextLocation);
+                        if (distance < minDistance)
+                        {
+                            targetPosition = monster.NextLocation;
+                            minDistance = distance;
+                        }
+                    }
+
+                    Move(targetPosition, hero.Id);
                     continue;
                 }
 
