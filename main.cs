@@ -118,7 +118,8 @@ class Player
                 }
                 else
                 {
-                    Console.WriteLine("WAIT");
+                    Console.WriteLine($"MOVE {baseX} {baseY}");
+                    //Console.WriteLine("WAIT");
                 }
             }
 
