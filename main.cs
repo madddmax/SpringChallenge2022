@@ -1,21 +1,29 @@
 using System;
 using System.Collections.Generic;
 
-/**
- * Auto-generated code below aims at helping you parse
- * the standard input according to the problem statement.
- **/
 class Player
 {
     public const int TYPE_MONSTER = 0;
     public const int TYPE_MY_HERO = 1;
     public const int TYPE_OP_HERO = 2;
 
+    public struct Point
+    {
+        public int X;
+        public int Y;
+
+        public Point(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+    }
+
     public class Entity
     {
         public int Id;
         public int Type;
-        public int X, Y;
+        public Point Location;
         public int ShieldLife;
         public int IsControlled;
         public int Health;
@@ -27,8 +35,7 @@ class Player
         {
             this.Id = id;
             this.Type = type;
-            this.X = x;
-            this.Y = y;
+            this.Location = new Point(x, y);
             this.ShieldLife = shieldLife;
             this.IsControlled = isControlled;
             this.Health = health;
@@ -39,16 +46,17 @@ class Player
         }
     }
 
-    public static int Distance(int x1, int y1, int x2, int y2) => Math.Abs(x1 - x2) + Math.Abs(y1 - y2);
-
     static void Main(string[] args)
     {
         string[] inputs;
         inputs = Console.ReadLine().Split(' ');
 
-        // base_x,base_y: The corner of the map representing your base
-        int baseX = int.Parse(inputs[0]);
-        int baseY = int.Parse(inputs[1]);
+        Point myBase = new Point
+        {
+            X = int.Parse(inputs[0]),
+            Y = int.Parse(inputs[1])
+        };
+        Debug(myBase);
 
         // heroesPerPlayer: Always 3
         int heroesPerPlayer = int.Parse(Console.ReadLine());
@@ -104,34 +112,30 @@ class Player
                 }
             }
 
-            Entity target = null;
+            Point targetLocation = myBase;
             int minDistance = Int32.MaxValue;
-            for(int i = 0; i < monsters.Count; i++)
+            for (int i = 0; i < monsters.Count; i++)
             {
                 var monster = monsters[i];
-                int current = Distance(baseX, baseY, monster.X, monster.Y);
+                int current = Distance(myBase, monster.Location);
 
-                if(current < minDistance)
+                if (current < minDistance)
                 {
-                    target = monster;
+                    targetLocation = monster.Location;
                     minDistance = current;
                 }
             }
 
             for (int i = 0; i < heroesPerPlayer; i++)
             {
-                if(target != null)
-                {
-                    Console.WriteLine($"MOVE {target.X} {target.Y}");
-                }
-                else
-                {
-                    Console.WriteLine("WAIT");
-                }
+                Move(targetLocation);
             }
-
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
         }
     }
+
+    public static int Distance(Point p1, Point p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+
+    public static void Move(Point p) => Console.WriteLine($"MOVE {p.X} {p.Y}");
+
+    public static void Debug(Point p) => Console.Error.WriteLine("Debug messages " + p.X + " " + p.Y);
 }
