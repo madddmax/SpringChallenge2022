@@ -103,23 +103,30 @@ class Player
                         break;
                 }
             }
+
+            Entity target = null;
+            int minDistance = Int32.MaxValue;
+            for(int i = 0; i < monsters.Count; i++)
+            {
+                var monster = monsters[i];
+                int current = Distance(baseX, baseY, monster.X, monster.Y);
+
+                if(current < minDistance)
+                {
+                    target = monster;
+                    minDistance = current;
+                }
+            }
+
             for (int i = 0; i < heroesPerPlayer; i++)
             {
-                Entity target = null;
-
-                if (monsters.Count > 0)
-                {
-                    target = monsters[i % monsters.Count];
-                }
-
-                if (target != null)
+                if(target != null)
                 {
                     Console.WriteLine($"MOVE {target.X} {target.Y}");
                 }
                 else
                 {
-                    Console.WriteLine($"MOVE {baseX} {baseY}");
-                    //Console.WriteLine("WAIT");
+                    Console.WriteLine("WAIT");
                 }
             }
 
