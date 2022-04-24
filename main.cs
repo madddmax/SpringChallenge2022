@@ -7,6 +7,9 @@ class Player
     public const int MapHeight = 9000;
     public const int BaseAutoTarget = 5000;
 
+    public const int BaseVisionRange = 6000;
+    public const int HeroVisionRange = 2200;
+
     public const int ManaToCast = 10;
     public const int ControlCastRange = 2200;
 
@@ -73,6 +76,13 @@ class Player
         };
         Debug(enemyBase);
 
+        Point defPosition = new Point
+        {
+            X = Math.Abs(myBase.X - BaseVisionRange / 2),
+            Y = Math.Abs(myBase.Y - BaseVisionRange / 2)
+        };
+        Debug(defPosition);
+
         // heroesPerPlayer: Always 3
         int heroesPerPlayer = int.Parse(Console.ReadLine());
 
@@ -92,6 +102,8 @@ class Player
             List<Entity> myHeroes = new List<Entity>(entityCount);
             List<Entity> oppHeroes = new List<Entity>(entityCount);
             List<Entity> monsters = new List<Entity>(entityCount);
+
+            HashSet<int> controlledMonsters = new HashSet<int>();
 
             for (int i = 0; i < entityCount; i++)
             {
@@ -133,22 +145,24 @@ class Player
                 for (int i = 0; i < monsters.Count; i++)
                 {
                     var monster = monsters[i];
-                    if (monster.NearBase != TYPE_MY_HERO)
+
+                    int distance = Distance(myBase, monster.NextLocation);
+                    if (distance > BaseAutoTarget &&
+                        monster.NearBase != TYPE_MY_HERO)
                     {
                         continue;
                     }
 
-                    int current = Distance(myBase, monster.NextLocation);
-                    if (current < minDistanceToBase)
+                    if (distance < minDistanceToBase)
                     {
                         targetMonster = monster;
-                        minDistanceToBase = current;
+                        minDistanceToBase = distance;
                     }
                 }
 
                 if (targetMonster == null)
                 {
-                    Move(myBase, hero.Id);
+                    Move(defPosition, hero.Id);
                     continue;
                 }
 
@@ -156,10 +170,11 @@ class Player
                 if (distanceToTarget <= ControlCastRange &&
                    minDistanceToBase <= BaseAutoTarget / 2 &&
                    myMana >= ManaToCast &&
-                   targetMonster.Health >= 8)
+                   targetMonster.Health >= 8 &&
+                   !controlledMonsters.Contains(targetMonster.Id))
                 {
                     Control(targetMonster.Id, enemyBase, hero.Id);
-                    monsters.Remove(targetMonster);
+                    controlledMonsters.Add(targetMonster.Id);
                     myMana -= ManaToCast;
                     continue;
                 }
