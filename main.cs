@@ -4,7 +4,13 @@ using System.Collections.Generic;
 class Player
 {
     public const int MapWidth = 17630;
+    public const int HalfMapWidth = 8815;
+    public const int QuarterMapWidth = 4408;
+
     public const int MapHeight = 9000;
+    public const int HalfMapHeight = 4500;
+    public const int QuarterMapHeight = 2250;
+
     public const int BaseAutoTarget = 5000;
 
     public const int BaseVisionRange = 6000;
@@ -88,13 +94,13 @@ class Player
         {
             new Point
             {
-                X = Math.Abs(myBase.X - HalfBaseVisionRange),
-                Y = Math.Abs(myBase.Y - HalfBaseVisionRange)
+                X = Math.Abs(myBase.X - QuarterMapWidth),
+                Y = Math.Abs(myBase.Y - QuarterMapHeight)
             },
             new Point
             {
-                X = Math.Abs(enemyBase.X - HalfBaseVisionRange),
-                Y = Math.Abs(enemyBase.Y - HalfBaseVisionRange)
+                X = Math.Abs(enemyBase.X - QuarterMapWidth),
+                Y = Math.Abs(enemyBase.Y - QuarterMapHeight)
             }
         };
         Debug(attackPositions[0]);
@@ -182,12 +188,25 @@ class Player
                         targetAttackPosition = attackPositions[0];
                     }
 
+                    (Entity nearestMonster, int distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO);
+                    if (nearestMonster != null &&
+                        distanceToMonster <= ControlCastRange &&
+                        myMana >= ManaToCast &&
+                        nearestMonster.Health >= 8 &&
+                        !controlledMonsters.Contains(nearestMonster.Id))
+                    {
+                        Control(nearestMonster.Id, enemyBase, hero.Id);
+                        controlledMonsters.Add(nearestMonster.Id);
+                        myMana -= ManaToCast;
+                        continue;
+                    }
+
                     Move(targetAttackPosition, attackHeroId);
                     continue;
                 }
 
                 Entity targetMonster = null;
-                int minDistanceToBase = Int32.MaxValue;
+                int minDistance = Int32.MaxValue;
 
                 for (int i = 0; i < monsters.Count; i++)
                 {
@@ -200,17 +219,16 @@ class Player
                         continue;
                     }
 
-                    if (distance < minDistanceToBase)
+                    if (distance < minDistance)
                     {
                         targetMonster = monster;
-                        minDistanceToBase = distance;
+                        minDistance = distance;
                     }
                 }
 
                 if (targetMonster == null)
                 {
                     Point targetPosition = defPosition;
-                    int minDistance = Int32.MaxValue;
 
                     for (int i = 0; i < monsters.Count; i++)
                     {
@@ -230,7 +248,7 @@ class Player
 
                 var distanceToTarget = Distance(hero.Location, targetMonster.Location);
                 if (distanceToTarget <= ControlCastRange &&
-                   minDistanceToBase <= BaseAutoTarget / 2 &&
+                   minDistance <= BaseAutoTarget / 2 &&
                    myMana >= ManaToCast &&
                    targetMonster.Health >= 8 &&
                    !controlledMonsters.Contains(targetMonster.Id))
@@ -244,6 +262,32 @@ class Player
                 Move(targetMonster.NextLocation, hero.Id);
             }
         }
+    }
+
+    public static (Entity, int) GetNearestEntity(List<Entity> entities, Point target, int? ignoreThreatFor = null)
+    {
+        Entity nearestEntity = null;
+        int minDistance = int.MaxValue;
+
+        for (int i = 0; i < entities.Count; i++)
+        {
+            var entity = entities[i];
+
+            int distance = Distance(target, entity.Location);
+            if (ignoreThreatFor != null &&
+                entity.ThreatFor == ignoreThreatFor)
+            {
+                continue;
+            }
+
+            if (distance < minDistance)
+            {
+                nearestEntity = entity;
+                minDistance = distance;
+            }
+        }
+
+        return (nearestEntity, minDistance);  
     }
 
     public static int Distance(Point p1, Point p2) => (int)Math.Sqrt(Math.Pow(p1.X - p2.X, 2) + Math.Pow(p1.Y - p2.Y, 2));
