@@ -8,6 +8,7 @@ class Player
     public const int BaseAutoTarget = 5000;
 
     public const int BaseVisionRange = 6000;
+    public const int HalfBaseVisionRange = 3000;
     public const int HeroVisionRange = 2200;
 
     public const int ManaToCast = 10;
@@ -67,24 +68,48 @@ class Player
             X = int.Parse(inputs[0]),
             Y = int.Parse(inputs[1])
         };
-        Debug(myBase);
+        //Debug(myBase);
 
         Point enemyBase = new Point
         {
             X = Math.Abs(myBase.X - MapWidth),
             Y = Math.Abs(myBase.Y - MapHeight)
         };
-        Debug(enemyBase);
+        //Debug(enemyBase);
 
         Point defPosition = new Point
         {
-            X = Math.Abs(myBase.X - (BaseVisionRange + 1000) / 2),
-            Y = Math.Abs(myBase.Y - (BaseVisionRange + 1000) / 2)
+            X = Math.Abs(myBase.X - HalfBaseVisionRange),
+            Y = Math.Abs(myBase.Y - HalfBaseVisionRange)
         };
-        Debug(defPosition);
+        //Debug(defPosition);
+
+        Point[] attackPositions = 
+        {
+            new Point
+            {
+                X = Math.Abs(myBase.X - HalfBaseVisionRange),
+                Y = Math.Abs(myBase.Y - HalfBaseVisionRange)
+            },
+            new Point
+            {
+                X = Math.Abs(enemyBase.X - HalfBaseVisionRange),
+                Y = Math.Abs(enemyBase.Y - HalfBaseVisionRange)
+            }
+        };
+        Debug(attackPositions[0]);
+        Debug(attackPositions[1]);
+
+        Point targetAttackPosition = attackPositions[0];
 
         // heroesPerPlayer: Always 3
         int heroesPerPlayer = int.Parse(Console.ReadLine());
+
+        // init
+        bool firstMove = true;
+        int attackHeroId = 0;
+        int defendHeroId1 = 0;
+        int defendHeroId2 = 0;
 
         // game loop
         while (true)
@@ -99,8 +124,8 @@ class Player
 
             int entityCount = int.Parse(Console.ReadLine()); // Amount of heros and monsters you can see
 
-            List<Entity> myHeroes = new List<Entity>(entityCount);
-            List<Entity> oppHeroes = new List<Entity>(entityCount);
+            List<Entity> myHeroes = new List<Entity>(heroesPerPlayer);
+            List<Entity> oppHeroes = new List<Entity>(heroesPerPlayer);
             List<Entity> monsters = new List<Entity>(entityCount);
 
             HashSet<int> controlledMonsters = new HashSet<int>();
@@ -138,8 +163,29 @@ class Player
                 }
             }
 
+            if(firstMove)
+            {
+                attackHeroId = myHeroes[0].Id;
+                firstMove = false;
+            }
+
             foreach (Entity hero in myHeroes)
             {
+                if(hero.Id == attackHeroId)
+                {
+                    if(hero.Location.Equals(attackPositions[0]))
+                    {
+                        targetAttackPosition = attackPositions[1];
+                    }
+                    else if(hero.Location.Equals(attackPositions[1]))
+                    {
+                        targetAttackPosition = attackPositions[0];
+                    }
+
+                    Move(targetAttackPosition, attackHeroId);
+                    continue;
+                }
+
                 Entity targetMonster = null;
                 int minDistanceToBase = Int32.MaxValue;
 
