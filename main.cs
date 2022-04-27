@@ -4,11 +4,13 @@ using System.Collections.Generic;
 class Player
 {
     public const int MapWidth = 17630;
+    public const int ThreeQuartersMapWidth = 13222;
     public const int HalfMapWidth = 8815;
     public const int QuarterMapWidth = 4408;
     public const int EighthMapWidth = 2204;
 
     public const int MapHeight = 9000;
+    public const int ThreeQuartersMapHeight = 6750;
     public const int HalfMapHeight = 4500;
     public const int QuarterMapHeight = 2250;
     public const int EighthMapHeight = 1125;
@@ -16,11 +18,12 @@ class Player
     public const int BaseAutoTarget = 5000;
 
     public const int BaseVisionRange = 6000;
-    public const int HalfBaseVisionRange = 3000;
     public const int HeroVisionRange = 2200;
 
     public const int ManaToCast = 10;
     public const int ControlCastRange = 2200;
+
+    public const int SmallMonsterHealth = 10;
 
     public const int TYPE_MONSTER = 0;
     public const int TYPE_MY_HERO = 1;
@@ -76,21 +79,26 @@ class Player
             X = int.Parse(inputs[0]),
             Y = int.Parse(inputs[1])
         };
-        //Debug(myBase);
 
         Point enemyBase = new Point
         {
             X = Math.Abs(myBase.X - MapWidth),
             Y = Math.Abs(myBase.Y - MapHeight)
         };
-        //Debug(enemyBase);
 
-        Point defPosition = new Point
+        Point[] controlPositions = 
         {
-            X = Math.Abs(myBase.X - HalfBaseVisionRange),
-            Y = Math.Abs(myBase.Y - HalfBaseVisionRange)
+            new Point
+            {
+                X = 0,
+                Y = ThreeQuartersMapHeight
+            },
+            new Point
+            {
+                X = HalfMapWidth,
+                Y = 0
+            }
         };
-        //Debug(defPosition);
 
         Point[] attackPositions = 
         {
@@ -106,21 +114,33 @@ class Player
             }
         };
 
-        Point[] defendPositions1 = 
+        Point[] defPositions1 = 
         {
             new Point
             {
-                X = Math.Abs(myBase.X - QuarterMapWidth),
-                Y = Math.Abs(myBase.Y - HalfMapHeight)
+                X = Math.Abs(myBase.X - HalfMapWidth),
+                Y = Math.Abs(myBase.Y)
             },
             new Point
             {
-                X = Math.Abs(myBase.X + QuarterMapWidth),
-                Y = Math.Abs(myBase.Y - HalfMapHeight)
+                X = Math.Abs(myBase.X - HalfMapWidth),
+                Y = Math.Abs(myBase.Y - QuarterMapHeight)
             }
         };
-        Debug(attackPositions[0]);
-        Debug(attackPositions[1]);
+
+        Point[] defPositions2 = 
+        {
+            new Point
+            {
+                X = Math.Abs(myBase.X),
+                Y = Math.Abs(myBase.Y - ThreeQuartersMapHeight)
+            },
+            new Point
+            {
+                X = Math.Abs(myBase.X - QuarterMapWidth),
+                Y = Math.Abs(myBase.Y - ThreeQuartersMapHeight)
+            }
+        };
 
         // heroesPerPlayer: Always 3
         int heroesPerPlayer = int.Parse(Console.ReadLine());
@@ -128,11 +148,12 @@ class Player
         // init
         bool firstMove = true;
         int attackHeroId = 0;
-        int defendHeroId1 = 0;
-        int defendHeroId2 = 0;
+        int defHeroId = 0;
 
-        Point targetAttackPosition = attackPositions[0];
-        Point targetDefendPosition1 = defendPositions1[0];
+        Point controlPosition = controlPositions[0];
+        Point attackPosition = attackPositions[0];
+        Point defPosition1 = defPositions1[0];
+        Point defPosition2 = defPositions2[0];
 
         // game loop
         while (true)
@@ -189,92 +210,69 @@ class Player
             if(firstMove)
             {
                 attackHeroId = myHeroes[0].Id;
+                defHeroId = myHeroes[1].Id;
                 firstMove = false;
             }
 
             foreach (Entity hero in myHeroes)
             {
+                Entity nearestMonster = null;
+                int distanceToMonster = int.MaxValue;
+
+                // def
+                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, myBase, TYPE_OP_HERO);
+                if (hero.Id != attackHeroId && distanceToMonster <= BaseVisionRange)
+                {
+                    Move(nearestMonster.NextLocation, hero.Id);
+                    continue;
+                }
+
+                // control
+                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO);
+                if (nearestMonster != null &&
+                    distanceToMonster <= ControlCastRange &&
+                    myMana >= ManaToCast &&
+                    nearestMonster.Health >= SmallMonsterHealth &&
+                    !controlledMonsters.Contains(nearestMonster.Id))
+                {
+                    controlPosition = GetNextPosition(hero.Location, controlPositions) ?? controlPosition;
+                    Control(nearestMonster.Id, controlPosition, hero.Id);
+                    controlledMonsters.Add(nearestMonster.Id);
+                    myMana -= ManaToCast;
+                    continue;
+                }
+
+                // hunt
+                if(nearestMonster != null && distanceToMonster <= HeroVisionRange)
+                {
+                    Move(nearestMonster.NextLocation, hero.Id);
+                    continue;
+                }
+
+                // patrol
+                Point patrolPosition;
                 if(hero.Id == attackHeroId)
                 {
-                    (Entity nearestMonster, int distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO);
-                    if (nearestMonster != null &&
-                        distanceToMonster <= ControlCastRange &&
-                        myMana >= ManaToCast &&
-                        nearestMonster.Health >= 8 &&
-                        !controlledMonsters.Contains(nearestMonster.Id))
-                    {
-                        Control(nearestMonster.Id, enemyBase, hero.Id);
-                        controlledMonsters.Add(nearestMonster.Id);
-                        myMana -= ManaToCast;
-                        continue;
-                    }
-
-                    targetAttackPosition = GetPatrolPosition(hero.Location, attackPositions) ?? targetAttackPosition;
-                    Move(targetAttackPosition, attackHeroId);
-                    continue;
+                    attackPosition = GetNextPosition(hero.Location, attackPositions) ?? attackPosition;
+                    patrolPosition = attackPosition;
                 }
-
-                Entity targetMonster = null;
-                int minDistance = Int32.MaxValue;
-
-                for (int i = 0; i < monsters.Count; i++)
+                else if(hero.Id == defHeroId)
                 {
-                    var monster = monsters[i];
-
-                    int distance = Distance(myBase, monster.NextLocation);
-                    if (distance > BaseAutoTarget &&
-                        monster.NearBase != TYPE_MY_HERO)
-                    {
-                        continue;
-                    }
-
-                    if (distance < minDistance)
-                    {
-                        targetMonster = monster;
-                        minDistance = distance;
-                    }
+                    defPosition1 = GetNextPosition(hero.Location, defPositions1) ?? defPosition1;
+                    patrolPosition = defPosition1;
                 }
-
-                if (targetMonster == null)
+                else
                 {
-                    targetDefendPosition1 = GetPatrolPosition(hero.Location, defendPositions1) ?? targetDefendPosition1;
-                    Point targetPosition = targetDefendPosition1;
-
-                    for (int i = 0; i < monsters.Count; i++)
-                    {
-                        var monster = monsters[i];
-
-                        int distance = Distance(hero.Location, monster.NextLocation);
-                        if (distance < minDistance)
-                        {
-                            targetPosition = monster.NextLocation;
-                            minDistance = distance;
-                        }
-                    }
-
-                    Move(targetPosition, hero.Id);
-                    continue;
+                    defPosition2 = GetNextPosition(hero.Location, defPositions2) ?? defPosition2;
+                    patrolPosition = defPosition2;
                 }
-
-                // var distanceToTarget = Distance(hero.Location, targetMonster.Location);
-                // if (distanceToTarget <= ControlCastRange &&
-                //    minDistance <= BaseAutoTarget / 2 &&
-                //    myMana >= ManaToCast &&
-                //    targetMonster.Health >= 8 &&
-                //    !controlledMonsters.Contains(targetMonster.Id))
-                // {
-                //     Control(targetMonster.Id, enemyBase, hero.Id);
-                //     controlledMonsters.Add(targetMonster.Id);
-                //     myMana -= ManaToCast;
-                //     continue;
-                // }
-
-                Move(targetMonster.NextLocation, hero.Id);
+       
+                Move(patrolPosition, hero.Id);
             }
         }
     }
 
-    public static Point? GetPatrolPosition(Point location, Point[] positions)
+    public static Point? GetNextPosition(Point location, Point[] positions)
     {
         for(int i = 0; i < positions.Length; i++)
         {
