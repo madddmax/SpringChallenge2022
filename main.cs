@@ -257,17 +257,17 @@ class Player
                 }
 
                 // control 
-                // (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO, TYPE_MONSTER);
-                // if (nearestMonster != null &&
-                //     distanceToMonster <= ControlCastRange &&
-                //     myMana >= ManaToCast &&
-                //     nearestMonster.Health >= SmallMonsterHealth)
-                // {
-                //     Control(nearestMonster.Id, enemyBase, hero.Id);
-                //     monsters.Remove(nearestMonster);
-                //     myMana -= ManaToCast;
-                //     continue;
-                // }
+                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO, TYPE_MONSTER);
+                if (nearestMonster != null &&
+                    distanceToMonster <= ControlCastRange &&
+                    myMana >= ManaToMaxControl &&
+                    nearestMonster.Health >= SmallMonsterHealth)
+                {
+                    Control(nearestMonster.Id, enemyBase, hero.Id);
+                    monsters.Remove(nearestMonster);
+                    myMana -= ManaToCast;
+                    continue;
+                }
 
                 // hunt
                 (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO);
