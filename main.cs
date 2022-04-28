@@ -21,6 +21,8 @@ class Player
     public const int HeroVisionRange = 2200;
 
     public const int ManaToCast = 10;
+    public const int ManaToMinControl = 20;
+    public const int ManaToMaxControl = 80;
     public const int ControlCastRange = 2200;
 
     public const int SmallMonsterHealth = 10;
@@ -86,26 +88,12 @@ class Player
             Y = Math.Abs(myBase.Y - MapHeight)
         };
 
-        Point[] controlPositions = 
-        {
-            new Point
-            {
-                X = 0,
-                Y = ThreeQuartersMapHeight
-            },
-            new Point
-            {
-                X = HalfMapWidth,
-                Y = 0
-            }
-        };
-
         Point[] attackPositions = 
         {
             new Point
             {
-                X = Math.Abs(myBase.X - QuarterMapWidth),
-                Y = Math.Abs(myBase.Y - QuarterMapHeight)
+                X = Math.Abs(myBase.X - HalfMapWidth),
+                Y = Math.Abs(myBase.Y - HalfMapHeight)
             },
             new Point
             {
@@ -118,22 +106,22 @@ class Player
         {
             new Point
             {
-                X = Math.Abs(myBase.X - HalfMapWidth),
-                Y = Math.Abs(myBase.Y)
-            },
+                X = Math.Abs(myBase.X - QuarterMapWidth),
+                Y = Math.Abs(myBase.Y - QuarterMapHeight)
+            },            
             new Point
             {
                 X = Math.Abs(myBase.X - HalfMapWidth),
                 Y = Math.Abs(myBase.Y - QuarterMapHeight)
-            }
+            },
         };
 
         Point[] defPositions2 = 
         {
             new Point
             {
-                X = Math.Abs(myBase.X),
-                Y = Math.Abs(myBase.Y - ThreeQuartersMapHeight)
+                X = Math.Abs(myBase.X - EighthMapWidth),
+                Y = Math.Abs(myBase.Y - HalfMapHeight)
             },
             new Point
             {
@@ -150,7 +138,6 @@ class Player
         int attackHeroId = 0;
         int defHeroId = 0;
 
-        Point controlPosition = controlPositions[0];
         Point attackPosition = attackPositions[0];
         Point defPosition1 = defPositions1[0];
         Point defPosition2 = defPositions2[0];
@@ -171,8 +158,6 @@ class Player
             List<Entity> myHeroes = new List<Entity>(heroesPerPlayer);
             List<Entity> oppHeroes = new List<Entity>(heroesPerPlayer);
             List<Entity> monsters = new List<Entity>(entityCount);
-
-            HashSet<int> controlledMonsters = new HashSet<int>();
 
             for (int i = 0; i < entityCount; i++)
             {
@@ -219,33 +204,39 @@ class Player
                 Entity nearestMonster = null;
                 int distanceToMonster = int.MaxValue;
 
-                // def
-                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, myBase, TYPE_OP_HERO);
-                if (hero.Id != attackHeroId && distanceToMonster <= BaseVisionRange)
-                {
-                    Move(nearestMonster.NextLocation, hero.Id);
-                    continue;
-                }
-
-                // control
-                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO);
+                // control 
+                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO, TYPE_MONSTER);
                 if (nearestMonster != null &&
                     distanceToMonster <= ControlCastRange &&
                     myMana >= ManaToCast &&
-                    nearestMonster.Health >= SmallMonsterHealth &&
-                    !controlledMonsters.Contains(nearestMonster.Id))
+                    nearestMonster.Health >= SmallMonsterHealth)
                 {
-                    controlPosition = GetNextPosition(hero.Location, controlPositions) ?? controlPosition;
-                    Control(nearestMonster.Id, controlPosition, hero.Id);
-                    controlledMonsters.Add(nearestMonster.Id);
+                    Control(nearestMonster.Id, enemyBase, hero.Id);
+                    monsters.Remove(nearestMonster);
                     myMana -= ManaToCast;
                     continue;
                 }
 
+                // base
+                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, myBase, TYPE_OP_HERO);
+                if(distanceToMonster <= BaseVisionRange)
+                {
+                    (Entity nearestHero, int distanceToHero) = GetNearestEntity(myHeroes, nearestMonster.NextLocation, TYPE_OP_HERO);
+                    if (hero.Id == nearestHero.Id)
+                    {
+                        Move(nearestMonster.NextLocation, hero.Id);
+                        monsters.Remove(nearestMonster);
+                        continue;
+                    }
+                }
+
                 // hunt
-                if(nearestMonster != null && distanceToMonster <= HeroVisionRange)
+                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO);
+                if(nearestMonster != null && 
+                   distanceToMonster <= HeroVisionRange)
                 {
                     Move(nearestMonster.NextLocation, hero.Id);
+                    monsters.Remove(nearestMonster);
                     continue;
                 }
 
@@ -266,7 +257,7 @@ class Player
                     defPosition2 = GetNextPosition(hero.Location, defPositions2) ?? defPosition2;
                     patrolPosition = defPosition2;
                 }
-       
+
                 Move(patrolPosition, hero.Id);
             }
         }
@@ -290,7 +281,7 @@ class Player
         return null;
     }
 
-    public static (Entity, int) GetNearestEntity(List<Entity> entities, Point target, int? ignoreThreatFor = null)
+    public static (Entity, int) GetNearestEntity(List<Entity> entities, Point target, int? ignoreThreatFor = null, int? ignoreThreatFor2 = null)
     {
         Entity nearestEntity = null;
         int minDistance = int.MaxValue;
@@ -305,6 +296,12 @@ class Player
             {
                 continue;
             }
+
+            if (ignoreThreatFor2 != null &&
+                entity.ThreatFor == ignoreThreatFor2)
+            {
+                continue;
+            }           
 
             if (distance < minDistance)
             {
