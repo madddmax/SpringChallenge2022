@@ -206,13 +206,13 @@ class Player
             foreach (Entity hero in myHeroes)
             {
                 Entity nearestMonster = null;
-                int distanceToMonster = int.MaxValue;
+                double distanceToMonster = double.MaxValue;
 
                 // my base
                 (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, myBase, TYPE_OP_HERO);
                 if(distanceToMonster <= BaseVisionRange)
                 {
-                    (Entity nearestHero, int distanceToHero) = GetNearestEntity(myHeroes, nearestMonster.NextLocation, TYPE_OP_HERO);
+                    (Entity nearestHero, double distanceToHero) = GetNearestEntity(myHeroes, nearestMonster.Location, TYPE_OP_HERO);
                     if (hero.Id == nearestHero.Id)
                     {
                         if(myMana >= ManaToCast &&
@@ -233,29 +233,32 @@ class Player
                 }
 
                 // enemy base
-                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, enemyBase);
-                if(distanceToMonster <= BaseVisionRange)
+                if(hero.Id == attackHeroId)
                 {
-                    (Entity nearestHero, int distanceToHero) = GetNearestEntity(myHeroes, nearestMonster.NextLocation);
-                    if (hero.Id == nearestHero.Id)
+                    (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, enemyBase);
+                    if(distanceToMonster <= BaseVisionRange)
                     {
-                        if(myMana >= ManaToCast &&
-                           distanceToHero <= WindCastRange &&
-                           nearestMonster.ShieldLife == 0 &&
-                           nearestMonster.Health >= VerySmallMonsterHealth)
+                        (Entity nearestHero, double distanceToHero) = GetNearestEntity(myHeroes, nearestMonster.Location);
+                        if (hero.Id == nearestHero.Id)
                         {
-                            Wind(enemyBase, hero.Id);
+                            if(myMana >= ManaToCast &&
+                            distanceToHero <= WindCastRange &&
+                            nearestMonster.ShieldLife == 0 &&
+                            nearestMonster.Health >= VerySmallMonsterHealth)
+                            {
+                                Wind(enemyBase, hero.Id);
+                            }
+                            else
+                            {
+                                Move(nearestMonster.Location, hero.Id);
+                            }
+    
+                            monsters.Remove(nearestMonster);
+                            continue;
                         }
-                        else
-                        {
-                            Move(nearestMonster.Location, hero.Id);
-                        }
-   
-                        monsters.Remove(nearestMonster);
-                        continue;
-                    }
+                    }                    
                 }
-
+                
                 // control 
                 (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO, TYPE_MONSTER);
                 if (nearestMonster != null &&
@@ -321,16 +324,16 @@ class Player
         return null;
     }
 
-    public static (Entity, int) GetNearestEntity(List<Entity> entities, Point target, int? ignoreThreatFor = null, int? ignoreThreatFor2 = null)
+    public static (Entity, double) GetNearestEntity(List<Entity> entities, Point target, int? ignoreThreatFor = null, int? ignoreThreatFor2 = null)
     {
         Entity nearestEntity = null;
-        int minDistance = int.MaxValue;
+        double minDistance = double.MaxValue;
 
         for (int i = 0; i < entities.Count; i++)
         {
             var entity = entities[i];
 
-            int distance = Distance(target, entity.Location);
+            double distance = Distance(target, entity.Location);
             if (ignoreThreatFor != null &&
                 entity.ThreatFor == ignoreThreatFor)
             {
@@ -353,9 +356,7 @@ class Player
         return (nearestEntity, minDistance);  
     }
 
-    public static int Distance(Point p1, Point p2) => (int)Math.Sqrt(Math.Pow(p1.X - p2.X, 2) + Math.Pow(p1.Y - p2.Y, 2));
-
-    public static int DistanceFast(Point p1, Point p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+    public static double Distance(Point p1, Point p2) => Math.Sqrt(Math.Pow(p1.X - p2.X, 2) + Math.Pow(p1.Y - p2.Y, 2));
 
     public static void Debug(Point p) => Console.Error.WriteLine($"Debug point {p.X} {p.Y}");
 
