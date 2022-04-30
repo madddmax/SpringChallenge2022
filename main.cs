@@ -25,7 +25,7 @@ class Player
 
     public const int ManaToCast = 10;
     public const int ManaToControl = 50;
-    public const int ManaToAttack = 80;
+    public const int ManaToAttack = 50;
     public const int WindCastRange = 1280;
     public const int ControlCastRange = 2200;
     public const int ShieldCastRange = 2200;
@@ -210,7 +210,7 @@ class Player
 
             Dictionary<Entity, double> inBaseMonsters = new Dictionary<Entity, double>();
             Dictionary<Entity, double> inAttackMonsters = new Dictionary<Entity, double>();
-            Dictionary<Entity, double> allInAttackMonsters = new Dictionary<Entity, double>();
+            List<Entity> allInAttackMonsters = new List<Entity>();
             foreach(Entity monster in monsters)
             {
                 double distanceToBase = Distance(myBase, monster.Location);
@@ -220,14 +220,14 @@ class Player
                 }
 
                 double distanceToAttack = Distance(enemyBase, monster.Location);
-                if(distanceToAttack <= BaseVisionRange/2 && monster.Health > SmallMonsterHealth && monster.ShieldLife == 0)
+                if(distanceToAttack <= BaseVisionRange/2 && monster.Health >= SmallMonsterHealth && monster.ShieldLife == 0)
                 {
                     inAttackMonsters.Add(monster, distanceToAttack);
                 }
 
-                if(distanceToAttack <= BaseVisionRange)
+                if(distanceToAttack <= BaseVisionRange && monster.ShieldLife == 0)
                 {
-                    allInAttackMonsters.Add(monster, distanceToAttack);
+                    allInAttackMonsters.Add(monster);
                 }          
             }
 
@@ -272,31 +272,40 @@ class Player
                     continue;
                 }
 
-                if(hero.Id == attackHeroId && myMana >= ManaToAttack)
+                if(hero.Id == attackHeroId && myMana >= ManaToAttack && allInAttackMonsters.Count > 0 &&
+                   (allInAttackMonsters.Count > 3))
                 {
-                    (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, enemyBase);
-                    if(distanceToMonster <= BaseVisionRange)
-                    {
-                        var distanceToHero = Distance(hero.Location, nearestMonster.Location);
-                        if(distanceToHero <= WindCastRange &&
-                            nearestMonster.Health >= SmallMonsterHealth)
-                        {
-                            Wind(enemyBase, hero.Id);
-                            myMana -= ManaToCast;
-                        }
-                        else
-                        {
-                            Move(nearestMonster.Location, hero.Id);
-                        }
+                    (nearestMonster, distanceToMonster) = GetNearestEntity(allInAttackMonsters, enemyBase);
 
-                        monsters.Remove(nearestMonster);
-                        continue;
-                    } 
+                    var distanceToHero = Distance(hero.Location, nearestMonster.Location);
+                    if(distanceToHero <= WindCastRange &&
+                        nearestMonster.Health >= SmallMonsterHealth)
+                    {
+                        Wind(enemyBase, hero.Id);
+                        myMana -= ManaToCast;
+                    }
+                    else
+                    {
+                        Move(nearestMonster.Location, hero.Id);
+                    }
+
+                    monsters.Remove(nearestMonster);
+                    continue;
+                    
                 }  
 
                 // control 
-                (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO, TYPE_MONSTER);
+                if(myMana > ManaToControl * 2)
+                {
+                    (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO);
+                }
+                else
+                {
+                    (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location, TYPE_OP_HERO, TYPE_MONSTER);
+                }
+
                 if (nearestMonster != null &&
+                    nearestMonster.ShieldLife == 0 &&
                     distanceToMonster <= ControlCastRange &&
                     myMana >= ManaToControl &&
                     nearestMonster.Health >= SmallMonsterHealth)
@@ -319,7 +328,7 @@ class Player
                 }
 
                 (nearestMonster, distanceToMonster) = GetNearestEntity(monsters, hero.Location);
-                if(hero.Id == attackHeroId && myMana < ManaToAttack &&
+                if(hero.Id == attackHeroId &&
                     nearestMonster != null && 
                     nearestMonster.ShieldLife == 0 &&
                    distanceToMonster <= HeroVisionRange)
